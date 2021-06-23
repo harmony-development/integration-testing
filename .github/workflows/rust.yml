@@ -1,0 +1,39 @@
+name: Rust
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - 'README.md'
+      - '*.nix'
+      - 'flake.lock'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - 'README.md'
+      - '*.nix'
+      - 'flake.lock'
+
+env:
+  CARGO_TERM_COLOR: always
+  TESTER_PASSWORD: ${{ secrets.TESTER_PASSWORD }}
+
+jobs:
+  rust-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: |
+        sudo apt update -yy
+        sudo apt install -yy --no-install-recommends protobuf-compiler
+    - name: Install rust
+      run: rustup default stable && rustup component add rustfmt clippy
+
+    - name: Cache rust
+      uses: Swatinem/rust-cache@v1
+    
+    - name: Run tests
+      run: cargo run --release --package tests
