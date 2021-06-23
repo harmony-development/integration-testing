@@ -1,5 +1,5 @@
 # Rust
-/target/
+**/target
 **/*.rs.bk
 
 # Nix
@@ -10,7 +10,5 @@
 /.direnv
 /.envrc
 
-
-# Added by cargo
-
-/target
+# Editors
+/.vscode
