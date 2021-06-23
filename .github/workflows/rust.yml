@@ -38,5 +38,14 @@ jobs:
     - name: Cache rust
       uses: Swatinem/rust-cache@v1
     
+    - name: Update deps
+      run: cargo update --verbose
+
     - name: Run tests
-      run: RUST_LOG=debug cargo run --release --package tests
+      run: RUST_LOG=debug cargo run --verbose --release --package tests
+
+    - name: Commit
+      uses: stefanzweifel/git-auto-commit-action@v4
+      with:
+        commit_message: "chore(deps): update rust tests deps"
+        branch: main
