@@ -7,3 +7,6 @@ edition = "2018"
 
 [dependencies]
 harmony_rust_sdk = { git = "https://github.com/harmony-development/harmony_rust_sdk.git", branch = "master", features = ["client"] }
+rand = "0.8"
+tokio = { version = "1.7", features = ["macros", "time", "rt-multi-thread"] }
+tracing-subscriber = "0.2"
