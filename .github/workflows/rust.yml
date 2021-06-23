@@ -36,4 +36,4 @@ jobs:
       uses: Swatinem/rust-cache@v1
     
     - name: Run tests
-      run: cargo run --release --package tests
+      run: RUST_LOG=debug cargo run --release --package tests
