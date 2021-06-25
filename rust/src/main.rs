@@ -116,7 +116,6 @@ async fn tests(data: TestData) -> u16 {
         |client| {
             info!("Created client");
             tests_complete += 1;
-            let user_id = client.auth_status().session().unwrap().user_id;
 
             test! {
                 "client auth",
@@ -147,6 +146,7 @@ async fn tests(data: TestData) -> u16 {
                             tests_complete += 1;
                         }
                     }
+                    let user_id = client.auth_status().session().unwrap().user_id;
 
                     test! {
                         "stream events",
