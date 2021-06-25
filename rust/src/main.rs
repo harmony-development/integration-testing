@@ -116,6 +116,7 @@ async fn tests(data: TestData) -> u16 {
         |client| {
             info!("Created client");
             tests_complete += 1;
+            let user_id = client.auth_status().session().unwrap().user_id;
 
             test! {
                 "client auth",
@@ -505,6 +506,14 @@ async fn tests(data: TestData) -> u16 {
                         ),
                         |response| {
                             tests_complete += 1;
+                            test! {
+                                "compare profile status",
+                                profile::get_user(&client, UserId::new(user_id)),
+                                |response| {
+                                    check!(response.user_status, i32::from(harmonytypes::UserStatus::Offline));
+                                    tests_complete += 1;
+                                }
+                            }
                         }
                     }
 
@@ -516,6 +525,14 @@ async fn tests(data: TestData) -> u16 {
                         ),
                         |response| {
                             tests_complete += 1;
+                            test! {
+                                "compare profile bot",
+                                profile::get_user(&client, UserId::new(user_id)),
+                                |response| {
+                                    check!(response.is_bot, true);
+                                    tests_complete += 1;
+                                }
+                            }
                         }
                     }
                 }
