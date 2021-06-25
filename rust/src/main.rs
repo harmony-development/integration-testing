@@ -507,6 +507,17 @@ async fn tests(data: TestData) -> u16 {
                             tests_complete += 1;
                         }
                     }
+
+                    test! {
+                        "set profile bot",
+                        profile::profile_update(
+                            &client,
+                            ProfileUpdate::default().new_is_bot(true),
+                        ),
+                        |response| {
+                            tests_complete += 1;
+                        }
+                    }
                 }
             }
         }
