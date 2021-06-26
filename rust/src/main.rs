@@ -466,7 +466,7 @@ async fn tests(data: TestData) -> u16 {
         }
     }
 
-    unsafe { TESTS_TOTAL }
+    unsafe { TESTS_COMPLETE }
 }
 
 #[macro_export]
