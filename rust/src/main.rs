@@ -55,6 +55,9 @@ const SCHERZO_DATA: TestData = TestData {
     file_id: "agfR1jmjclto9OoGwmlNvM95jBLxMi0zTiu5ilTaj095Cap2QFX2OlQyfB66iG2W",
 };
 
+static mut TESTS_COMPLETE: u16 = 0;
+static mut TESTS_TOTAL: u16 = 0;
+
 struct TestData {
     server: &'static str,
     name_res: &'static str,
@@ -77,36 +80,41 @@ async fn main() {
         reg.init()
     }
 
+    unsafe {
+        TESTS_COMPLETE = 0;
+        TESTS_TOTAL = 0;
+    }
     let ins = Instant::now();
     let l = tests(LEGATO_DATA).instrument(info_span!("legato")).await;
     let lt = ins.elapsed();
 
+    unsafe {
+        TESTS_COMPLETE = 0;
+        TESTS_TOTAL = 0;
+    }
     let ins = Instant::now();
     let s = tests(SCHERZO_DATA).instrument(info_span!("scherzo")).await;
     let st = ins.elapsed();
 
     info!(
-        "Legato: {} out of 41 tests successful, completed in {} secs",
+        "Legato: {} out of {} tests successful, completed in {} secs",
         l,
+        unsafe { TESTS_TOTAL },
         lt.as_secs_f64()
     );
     info!(
-        "Scherzo: {} out of 41 tests successful, completed in {} secs",
+        "Scherzo: {} out of {} tests successful, completed in {} secs",
         s,
+        unsafe { TESTS_TOTAL },
         st.as_secs_f64()
     );
 }
 
 async fn tests(data: TestData) -> u16 {
-    let mut tests_complete = 0;
-
     {
         test! {
             "name resolution",
             Client::new(data.name_res.parse().unwrap(), None),
-            |_a| {
-                tests_complete += 1;
-            }
         }
     }
 
@@ -115,7 +123,6 @@ async fn tests(data: TestData) -> u16 {
         Client::new(data.server.parse().unwrap(), None),
         |client| {
             info!("Created client");
-            tests_complete += 1;
 
             test! {
                 "client auth",
@@ -136,24 +143,16 @@ async fn tests(data: TestData) -> u16 {
                 |_a| {
                     check!(client.auth_status().is_authenticated(), true);
                     info!("Logged in");
-                    tests_complete += 1;
 
                     test! {
                         "check logged in",
                         auth::check_logged_in(&client, ()),
-                        |_a| {
-                            info!("Logged in");
-                            tests_complete += 1;
-                        }
                     }
                     let user_id = client.auth_status().session().unwrap().user_id;
 
                     test! {
                         "stream events",
                         chat::stream_events(&client),
-                        |_a| {
-                            tests_complete += 1;
-                        }
                     }
 
                     test! {
@@ -162,17 +161,11 @@ async fn tests(data: TestData) -> u16 {
                             &client,
                             ProfileUpdate::default().new_status(harmonytypes::UserStatus::OnlineUnspecified),
                         ),
-                        |_a| {
-                            tests_complete += 1;
-                        }
                     }
 
                     test! {
                         "preview guild",
                         guild::preview_guild(&client, invite::InviteId::new("harmony").unwrap()),
-                        |response| {
-                            tests_complete += 1;
-                        }
                     }
 
                     test! {
@@ -180,16 +173,12 @@ async fn tests(data: TestData) -> u16 {
                         guild::get_guild_list(&client, GetGuildListRequest {}),
                         |response| {
                             check!(response.guilds.len(), 1);
-                            tests_complete += 1;
                         }
                     }
 
                     test! {
                         "get guild roles",
                         permissions::get_guild_roles(&client, GuildId::new(data.guild)),
-                        |response| {
-                            tests_complete += 1;
-                        }
                     }
 
                     test! {
@@ -197,7 +186,6 @@ async fn tests(data: TestData) -> u16 {
                         guild::get_guild_members(&client, GuildId::new(data.guild)),
                         |response| {
                             check!(response.members.len(), 1);
-                            tests_complete += 1;
 
                             test! {
                                 "get user",
@@ -210,17 +198,11 @@ async fn tests(data: TestData) -> u16 {
                                             .expect("expected at least one user in guild"),
                                     ),
                                 ),
-                                |response| {
-                                    tests_complete += 1;
-                                }
                             }
 
                             test! {
                                 "get user bulk",
                                 profile::get_user_bulk(&client, response.members),
-                                |response| {
-                                    tests_complete += 1;
-                                }
                             }
                         }
                     }
@@ -228,26 +210,16 @@ async fn tests(data: TestData) -> u16 {
                     test! {
                         "get emote packs",
                         emote::get_emote_packs(&client, GetEmotePacksRequest {}),
-                        |response| {
-                            tests_complete += 1;
-                        }
                     }
 
                     test! {
                         "get guild channels",
                         channel::get_guild_channels(&client, GuildId::new(data.guild)),
-                        |response| {
-                            tests_complete += 1;
-                        }
                     }
 
                     test! {
                         "typing",
                         typing(&client, Typing::new(data.guild, data.channel)),
-                        |response| {
-                            info!("Notified the server that we are typing");
-                            tests_complete += 1;
-                        }
                     }
 
                     let current_time = std::time::UNIX_EPOCH.elapsed().unwrap().as_secs();
@@ -258,9 +230,6 @@ async fn tests(data: TestData) -> u16 {
                             &client,
                             SendMessage::new(data.guild, data.channel).text(&msg),
                         ),
-                        |response| {
-                            tests_complete += 1;
-                        }
                     }
 
                     test! {
@@ -269,8 +238,6 @@ async fn tests(data: TestData) -> u16 {
                         |response| {
                             let our_msg = response.messages.first().unwrap();
                             check!(our_msg.text(), Some(msg.as_str()));
-                            tests_complete += 1;
-
 
                             let new_content = rand::thread_rng()
                                 .sample_iter(rand::distributions::Alphanumeric)
@@ -290,8 +257,6 @@ async fn tests(data: TestData) -> u16 {
                                     },
                                 ),
                                 |response| {
-                                    tests_complete += 1;
-
                                     test! {
                                         "compare get message",
                                         message::get_message(&client, GetMessageRequest {
@@ -301,7 +266,6 @@ async fn tests(data: TestData) -> u16 {
                                         }),
                                         |response| {
                                             check!(response.message.as_ref().unwrap().text(), Some(new_content.as_str()));
-                                            tests_complete += 1;
                                         }
                                     }
                                 }
@@ -312,25 +276,16 @@ async fn tests(data: TestData) -> u16 {
                     test! {
                         "instant view",
                         mediaproxy::instant_view(&client, INSTANT_VIEW_URL.parse::<Url>().unwrap()),
-                        |response| {
-                            tests_complete += 1;
-                        }
                     }
 
                     test! {
                         "can instant view",
                         mediaproxy::can_instant_view(&client, INSTANT_VIEW_URL.parse::<Url>().unwrap()),
-                        |response| {
-                            tests_complete += 1;
-                        }
                     }
 
                     test! {
                         "fetch link metadata",
                         mediaproxy::fetch_link_metadata(&client, INSTANT_VIEW_URL.parse::<Url>().unwrap()),
-                        |response| {
-                            tests_complete += 1;
-                        }
                     }
 
                     test! {
@@ -342,14 +297,9 @@ async fn tests(data: TestData) -> u16 {
                             FILE_DATA.as_bytes().to_vec(),
                         ),
                         |response| {
-                            tests_complete += 1;
-
                             test! {
                                 "upload response id",
                                 response.text(),
-                                |response| {
-                                    tests_complete += 1;
-                                }
                             }
                         }
                     }
@@ -358,7 +308,6 @@ async fn tests(data: TestData) -> u16 {
                         "download media",
                         rest::download(&client, FileId::Id(data.file_id.to_string())),
                         |response| {
-                            tests_complete += 1;
 
                             let content_type = response
                             .headers()
@@ -372,11 +321,9 @@ async fn tests(data: TestData) -> u16 {
                                     response.text(),
                                     |response| {
                                         check!(response.as_str(), FILE_DATA);
-                                        tests_complete += 1;
                                     }
                                 }
                                 check!(content_type.as_str(), CONTENT_TYPE);
-                                tests_complete += 1;
                             }
                         }
                     }
@@ -385,12 +332,10 @@ async fn tests(data: TestData) -> u16 {
                         "download external file",
                         rest::download(&client, FileId::External(EXTERNAL_URL.parse().unwrap())),
                         |response| {
-                            tests_complete += 1;
                             if response.bytes().await.is_err() {
                                 tracing::error!("failed to download external file bytes");
                             } else {
                                 tracing::info!("successfully downloaded external file bytes");
-                                tests_complete += 1;
                             }
                         }
                     }
@@ -400,7 +345,6 @@ async fn tests(data: TestData) -> u16 {
                         channel::get_guild_channels(&client, GuildId::new(data.guild)),
                         |response| {
                             check!(response.channels.len(), 1);
-                            tests_complete += 1;
                         }
                     }
 
@@ -411,26 +355,22 @@ async fn tests(data: TestData) -> u16 {
                             CreateChannel::new(data.guild, "test".to_string(), Place::bottom(data.channel)),
                         ),
                         |response| {
-                            tests_complete += 1;
                             test! {
                                 "get channels compare new",
                                 channel::get_guild_channels(&client, GuildId::new(data.guild)),
                                 |response| {
                                     check!(response.channels.len(), 2);
-                                    tests_complete += 1;
                                 }
                             }
                             test! {
                                 "delete channel",
                                 channel::delete_channel(&client, DeleteChannel::new(data.guild, response.channel_id)),
                                 |response| {
-                                    tests_complete += 1;
                                     test! {
                                         "get channels compare delete",
                                         channel::get_guild_channels(&client, GuildId::new(data.guild)),
                                         |response| {
                                             check!(response.channels.len(), 1);
-                                            tests_complete += 1;
                                         }
                                     }
                                 }
@@ -441,9 +381,6 @@ async fn tests(data: TestData) -> u16 {
                     test! {
                         "get guild information",
                         guild::get_guild(&client, GuildId::new(data.guild)),
-                        |response| {
-                            tests_complete += 1;
-                        }
                     }
 
                     let new_name = rand::thread_rng()
@@ -459,13 +396,11 @@ async fn tests(data: TestData) -> u16 {
                             UpdateGuildInformation::new(data.guild).new_guild_name(new_name.clone())
                         ),
                         |response| {
-                            tests_complete += 1;
                             test! {
                                 "compare new info",
                                 guild::get_guild(&client, GuildId::new(data.guild)),
                                 |response| {
                                     check!(response.guild_name, new_name);
-                                    tests_complete += 1;
                                 }
                             }
                         }
@@ -475,13 +410,9 @@ async fn tests(data: TestData) -> u16 {
                         "create guild",
                         guild::create_guild(&client, CreateGuild::new("test".to_string())),
                         |response| {
-                            tests_complete += 1;
                             test! {
                                 "delete guild",
                                 guild::delete_guild(&client, GuildId::new(response.guild_id)),
-                                |response| {
-                                    tests_complete += 1;
-                                }
                             }
                         }
                     }
@@ -494,7 +425,6 @@ async fn tests(data: TestData) -> u16 {
                         ),
                         |response| {
                             check!(response.ok, true);
-                            tests_complete += 1;
                         }
                     }
 
@@ -505,13 +435,11 @@ async fn tests(data: TestData) -> u16 {
                             ProfileUpdate::default().new_status(harmonytypes::UserStatus::Offline),
                         ),
                         |response| {
-                            tests_complete += 1;
                             test! {
                                 "compare profile status",
                                 profile::get_user(&client, UserId::new(user_id)),
                                 |response| {
                                     check!(response.user_status, i32::from(harmonytypes::UserStatus::Offline));
-                                    tests_complete += 1;
                                 }
                             }
                         }
@@ -524,13 +452,11 @@ async fn tests(data: TestData) -> u16 {
                             ProfileUpdate::default().new_is_bot(true),
                         ),
                         |response| {
-                            tests_complete += 1;
                             test! {
                                 "compare profile bot",
                                 profile::get_user(&client, UserId::new(user_id)),
                                 |response| {
                                     check!(response.is_bot, true);
-                                    tests_complete += 1;
                                 }
                             }
                         }
@@ -540,17 +466,21 @@ async fn tests(data: TestData) -> u16 {
         }
     }
 
-    tests_complete
+    unsafe { TESTS_TOTAL }
 }
 
 #[macro_export]
 macro_rules! test {
+    ($name:expr, $res:expr,) => {
+        test!($name, $res, |_a| ());
+    };
     {
         $name:expr,
         $res:expr,
         |$val:ident| $sub:expr
     } => {
         info!("Testing {}...", $name);
+        unsafe { TESTS_TOTAL += 1; }
         let ins = Instant::now();
         let span = info_span!($name);
         async {
@@ -558,22 +488,27 @@ macro_rules! test {
                 Ok($val) => {
                     info!("successful in {} ns", ins.elapsed().as_nanos());
                     info!("response: {:?}", $val);
+                    unsafe { TESTS_COMPLETE += 1; }
                     $sub
                 },
                 Err(err) => error!("error occured: {}", err),
             }
         }.instrument(span).await
     };
-    ($res:expr) => {
-        test!($res, |_| {});
-    };
 }
 
 #[macro_export]
 macro_rules! check {
     ($res:expr, $res2:expr) => {
+        unsafe {
+            TESTS_TOTAL += 1;
+        }
         if $res != $res2 {
             error!("check unsuccessful: {:?} != {:?}", $res, $res2);
+        } else {
+            unsafe {
+                TESTS_COMPLETE += 1;
+            }
         }
     };
 }
