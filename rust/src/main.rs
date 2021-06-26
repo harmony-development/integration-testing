@@ -42,8 +42,8 @@ const INSTANT_VIEW_URL: &str = "https://duckduckgo.com/";
 const LEGATO_DATA: TestData = TestData {
     server: "https://chat.harmonyapp.io:2289",
     name_res: "https://chat.harmonyapp.io",
-    guild: 2721664628324040709,
-    channel: 2721664628324106245,
+    guild: 2725839961419939845,
+    channel: 2725839961420005381,
     file_id: "403cb46c-49cf-4ae1-b876-f38eb26accb0",
 };
 
