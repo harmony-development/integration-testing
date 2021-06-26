@@ -57,6 +57,7 @@ const SCHERZO_DATA: TestData = TestData {
 
 static mut TESTS_COMPLETE: u16 = 0;
 static mut TESTS_TOTAL: u16 = 0;
+static mut TOTAL_TIME: Duration = Duration::ZERO;
 
 struct TestData {
     server: &'static str,
@@ -83,18 +84,18 @@ async fn main() {
     unsafe {
         TESTS_COMPLETE = 0;
         TESTS_TOTAL = 0;
+        TOTAL_TIME = Duration::ZERO;
     }
-    let ins = Instant::now();
     let l = tests(LEGATO_DATA).instrument(info_span!("legato")).await;
-    let lt = ins.elapsed();
+    let lt = unsafe { TOTAL_TIME };
 
     unsafe {
         TESTS_COMPLETE = 0;
         TESTS_TOTAL = 0;
+        TOTAL_TIME = Duration::ZERO;
     }
-    let ins = Instant::now();
     let s = tests(SCHERZO_DATA).instrument(info_span!("scherzo")).await;
-    let st = ins.elapsed();
+    let st = unsafe { TOTAL_TIME };
 
     info!(
         "Legato: {} out of {} tests successful, completed in {} secs",
@@ -480,12 +481,14 @@ macro_rules! test {
     } => {
         info!("Testing {}...", $name);
         unsafe { TESTS_TOTAL += 1; }
-        let ins = Instant::now();
         let span = info_span!($name);
+        let ins = Instant::now();
         async {
             match $res.await {
                 Ok($val) => {
-                    info!("successful in {} ns", ins.elapsed().as_nanos());
+                    let time_passed = ins.elapsed();
+                    unsafe { TOTAL_TIME += time_passed; }
+                    info!("successful in {} ns", time_passed.as_nanos());
                     info!("response: {:?}", $val);
                     unsafe { TESTS_COMPLETE += 1; }
                     $sub
@@ -512,7 +515,7 @@ macro_rules! check {
     };
 }
 
-use std::fmt;
+use std::{fmt, time::Duration};
 use tracing::{Event, Subscriber};
 use tracing_subscriber::fmt::{FmtContext, FormatEvent, FormatFields};
 use tracing_subscriber::registry::LookupSpan;
@@ -544,6 +547,8 @@ where
                 "client connection" | "client auth" => Ok(()),
                 _ => write!(writer, "/{}", span.name().replace(' ', "_")),
             })?;
+
+            write!(writer, ": ")?;
 
             ctx.field_format().format_fields(writer, event)?;
 
