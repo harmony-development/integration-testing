@@ -122,8 +122,6 @@ async fn tests(data: TestData) -> u16 {
         "client connection",
         Client::new(data.server.parse().unwrap(), None),
         |client| {
-            info!("Created client");
-
             test! {
                 "client auth",
                 async {
@@ -142,7 +140,6 @@ async fn tests(data: TestData) -> u16 {
                 },
                 |_a| {
                     check!(client.auth_status().is_authenticated(), true);
-                    info!("Logged in");
 
                     test! {
                         "check logged in",
@@ -150,10 +147,12 @@ async fn tests(data: TestData) -> u16 {
                     }
                     let user_id = client.auth_status().session().unwrap().user_id;
 
-                    test! {
-                        "stream events",
-                        chat::stream_events(&client),
-                    }
+                    let mut events = {
+                        test! {
+                            "stream events",
+                            chat::stream_events(&client),
+                        }
+                    };
 
                     test! {
                         "profile update",
@@ -541,16 +540,16 @@ where
             write!(writer, "::{}::", lvl)?;
 
             // Write spans and fields of each span
-            ctx.visit_spans(|span| {
-                write!(writer, "{}:", span.name())?;
-                Ok(())
+            ctx.visit_spans(|span| match span.name() {
+                "client connection" | "client auth" => Ok(()),
+                _ => write!(writer, "/{}", span.name().replace(' ', "_")),
             })?;
 
             ctx.field_format().format_fields(writer, event)?;
 
-            writeln!(writer)
-        } else {
-            write!(writer, "")
+            writeln!(writer)?;
         }
+
+        Ok(())
     }
 }
