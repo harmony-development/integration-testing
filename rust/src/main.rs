@@ -533,14 +533,29 @@ where
         writer: &mut dyn fmt::Write,
         event: &Event<'_>,
     ) -> fmt::Result {
-        let level = event.metadata().level();
+        let metadata = event.metadata();
+        let level = metadata.level();
 
         if let Some(lvl) = level
             .eq(&Level::WARN)
             .then(|| "warning")
             .or_else(|| level.eq(&Level::ERROR).then(|| "error"))
         {
-            write!(writer, "::{}::", lvl)?;
+            let file = metadata.file();
+            let line = metadata.line();
+
+            write!(writer, "::{}", lvl)?;
+            if let Some(file_name) = file {
+                write!(writer, " file={}", file_name)?;
+            }
+            if let Some(line) = line {
+                if file.is_some() {
+                    write!(writer, ",line={}", line)?;
+                } else {
+                    write!(writer, " line={}", line)?;
+                }
+            }
+            write!(writer, "::")?;
 
             // Write spans and fields of each span
             ctx.visit_spans(|span| match span.name() {
