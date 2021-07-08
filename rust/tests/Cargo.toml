@@ -1,0 +1,12 @@
+[package]
+name = "tests"
+license = "GPLv3"
+version = "0.1.0"
+authors = ["Yusuf Bera Ertan <y.bera003.06@protonmail.com>"]
+edition = "2018"
+
+[dependencies]
+harmony_rust_sdk = { git = "https://github.com/harmony-development/harmony_rust_sdk.git", branch = "master", features = ["client"] }
+rand = "0.8"
+tokio = { version = "1.8", features = ["macros", "time", "rt-multi-thread"] }
+tracing-subscriber = "0.2"
