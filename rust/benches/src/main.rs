@@ -26,34 +26,31 @@ use harmony_rust_sdk::{
 const SERVER_ADDR: &str = "https://localhost:2289";
 const EMAIL: &str = "test@test.org";
 const PASSWORD: &str = "123456789Ab";
-
-const SCHERZO_DATA: BenchData = BenchData {
-    id: "scherzo",
-    guild_id: 0,
-    channel_id: 0,
-};
-
-const LEGATO_DATA: BenchData = BenchData {
-    id: "legato",
-    guild_id: 0,
-    channel_id: 0,
-};
-
 #[derive(Copy, Clone)]
-struct BenchData {
-    id: &'static str,
+struct BenchData<'a> {
+    id: &'a str,
     guild_id: u64,
     channel_id: u64,
 }
 
 #[tokio::main]
 async fn main() -> ClientResult<()> {
-    bench_send_msgs(SCHERZO_DATA).await?;
-    bench_send_msgs(LEGATO_DATA).await?;
+    let mut args = std::env::args().skip(1);
+    let id = args.next().unwrap();
+    let guild_id = args.next().unwrap();
+    let channel_id = args.next().unwrap();
+
+    let data = BenchData {
+        id: id.as_str(),
+        guild_id: guild_id.parse().unwrap(),
+        channel_id: channel_id.parse().unwrap(),
+    };
+
+    bench_send_msgs(data).await?;
     Ok(())
 }
 
-async fn bench_send_msgs(data: BenchData) -> ClientResult<()> {
+async fn bench_send_msgs(data: BenchData<'_>) -> ClientResult<()> {
     let sent_10_msg = send_messages(10, data).await?;
     let sent_100_msg = send_messages(100, data).await?;
     let sent_1000_msg = send_messages(1000, data).await?;
@@ -69,7 +66,7 @@ async fn bench_send_msgs(data: BenchData) -> ClientResult<()> {
     Ok(())
 }
 
-async fn send_messages(num: usize, data: BenchData) -> ClientResult<Duration> {
+async fn send_messages(num: usize, data: BenchData<'_>) -> ClientResult<Duration> {
     let client = create_new_client().await?;
     let since = Instant::now();
     for i in 0..num {
