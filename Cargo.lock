@@ -13,9 +13,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.41"
+version = "1.0.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15af2628f6890fe2609a3b91bef4c83450512802e59489f9c1cb1fa5df064a61"
+checksum = "595d3cfa7a60d4555cb5067b99f07142a08ea778de5cf993f7b75c7d8fabc486"
 
 [[package]]
 name = "async-trait"
@@ -299,7 +299,7 @@ dependencies = [
 [[package]]
 name = "harmony_derive"
 version = "0.1.2"
-source = "git+https://github.com/harmony-development/harmony_rust_sdk.git?branch=master#e0238350c45d8be9fe2db7c957d5a3ec356da6c7"
+source = "git+https://github.com/harmony-development/harmony_rust_sdk.git?branch=master#ea4e4afb9f4f9e7fc06aaee6674cd09397841f7a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -308,8 +308,8 @@ dependencies = [
 
 [[package]]
 name = "harmony_rust_sdk"
-version = "0.6.0"
-source = "git+https://github.com/harmony-development/harmony_rust_sdk.git?branch=master#e0238350c45d8be9fe2db7c957d5a3ec356da6c7"
+version = "0.6.1"
+source = "git+https://github.com/harmony-development/harmony_rust_sdk.git?branch=master#ea4e4afb9f4f9e7fc06aaee6674cd09397841f7a"
 dependencies = [
  "derive-new",
  "derive_more",
@@ -354,9 +354,9 @@ dependencies = [
 
 [[package]]
 name = "hrpc"
-version = "0.10.2"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c36b24ae3661e96ea82763d03d24355d82b7fc00fc2430bfd51090ee2fb0293a"
+checksum = "490b99a7899d6190eda4bb726abc685c176167bb7dbcde43c09f24e34e9a4b88"
 dependencies = [
  "async-trait",
  "bytes",
@@ -374,9 +374,9 @@ dependencies = [
 
 [[package]]
 name = "hrpc-build"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e7b577cbd405670e713130bbd8d03614c188daeb3b38a2d11f49d4639b6a441"
+checksum = "c4262ecc577abc1f1b05c5313c8c071b15b26bf8755054af77b8d0830608c40e"
 dependencies = [
  "proc-macro2",
  "prost-build",
@@ -479,15 +479,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "input_buffer"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f97967975f448f1a7ddb12b0bc41069d09ed6a1c161a92687e057325db35d413"
-dependencies = [
- "bytes",
-]
-
-[[package]]
 name = "instant"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -504,9 +495,9 @@ checksum = "68f2d64f2edebec4ce84ad108148e67e1064789bee435edc5b60ad398714a3a9"
 
 [[package]]
 name = "itertools"
-version = "0.9.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
+checksum = "69ddb889f9d0d08a67338271fa9b62996bc788c7796a5c18cf057420aaed5eaf"
 dependencies = [
  "either",
 ]
@@ -794,9 +785,9 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e6984d2f1a23009bd270b8bb56d0926810a3d483f59c987d77969e9d8e840b2"
+checksum = "de5e2533f59d08fcf364fd374ebda0692a70bd6d7e66ef97f306f45c6c5d8020"
 dependencies = [
  "bytes",
  "prost-derive",
@@ -804,9 +795,9 @@ dependencies = [
 
 [[package]]
 name = "prost-build"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32d3ebd75ac2679c2af3a92246639f9fcc8a442ee420719cc4fe195b98dd5fa3"
+checksum = "355f634b43cdd80724ee7848f95770e7e70eefa6dcf14fea676216573b8fd603"
 dependencies = [
  "bytes",
  "heck",
@@ -822,9 +813,9 @@ dependencies = [
 
 [[package]]
 name = "prost-derive"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "169a15f3008ecb5160cba7d37bcd690a7601b6d30cfb87a117d45e59d52af5d4"
+checksum = "600d2f334aa05acb02a755e217ef1ab6dea4d51b58b7846588b747edec04efba"
 dependencies = [
  "anyhow",
  "itertools",
@@ -835,9 +826,9 @@ dependencies = [
 
 [[package]]
 name = "prost-types"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b518d7cdd93dab1d1122cf07fa9a60771836c668dde9d9e2a139f957f0d9f1bb"
+checksum = "603bbd6394701d13f3f25aada59c7de9d35a6a5887cfc156181234a44002771b"
 dependencies = [
  "bytes",
  "prost",
@@ -1307,9 +1298,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-tungstenite"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e96bb520beab540ab664bd5a9cfeaa1fcd846fa68c830b42e2c8963071251d2"
+checksum = "511de3f85caf1c98983545490c3d09685fa8eb634e57eec22bb4db271f46cbd8"
 dependencies = [
  "futures-util",
  "log",
@@ -1425,25 +1416,24 @@ checksum = "59547bce71d9c38b83d9c0e92b6066c4253371f15005def0c30d9657f50c7642"
 
 [[package]]
 name = "tungstenite"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fe8dada8c1a3aeca77d6b51a4f1314e0f4b8e438b7b1b71e3ddaca8080e4093"
+checksum = "a0b2d8558abd2e276b0a8df5c05a2ec762609344191e5fd23e292c910e9165b5"
 dependencies = [
  "base64",
  "byteorder",
  "bytes",
  "http",
  "httparse",
- "input_buffer",
  "log",
  "rand",
  "rustls",
+ "rustls-native-certs",
  "sha-1",
  "thiserror",
  "url",
  "utf-8",
  "webpki",
- "webpki-roots",
 ]
 
 [[package]]
