@@ -62,10 +62,30 @@ async fn main() -> ClientResult<()> {
     )
     .unwrap();
 
-    let average = IntoIter::new(first?)
-        .zip(IntoIter::new(second?).zip(IntoIter::new(third?).zip(IntoIter::new(fourth?))))
-        .map(|(first, (second, (third, fourth)))| (first + second + third + fourth) / 4)
-        .collect::<Vec<_>>();
+    let average = calc_average([first?, second?, third?, fourth?]);
+
+    println!(
+        "{} send messages results average warmup:\n10 msgs: {}\n100 msgs: {}\n1000 msgs: {}\n10000 msgs: {}",
+        data.id,
+        average[0].as_secs_f64(),
+        average[1].as_secs_f64(),
+        average[2].as_secs_f64(),
+        average[3].as_secs_f64()
+    );
+
+    let mut average = [Duration::ZERO; 4];
+
+    for _ in 0..10 {
+        let (first, second, third, fourth) = tokio::try_join!(
+            bench_send_msgs(datas[0]),
+            bench_send_msgs(datas[1]),
+            bench_send_msgs(datas[2]),
+            bench_send_msgs(datas[3]),
+        )
+        .unwrap();
+
+        average = calc_average([average, first?, second?, third?, fourth?]);
+    }
 
     println!(
         "{} send messages results average:\n10 msgs: {}\n100 msgs: {}\n1000 msgs: {}\n10000 msgs: {}",
@@ -75,7 +95,19 @@ async fn main() -> ClientResult<()> {
         average[2].as_secs_f64(),
         average[3].as_secs_f64()
     );
+
     Ok(())
+}
+
+fn calc_average<const N: usize, const L: usize>(arrs: [[Duration; N]; L]) -> [Duration; N] {
+    let mut temp = [Duration::ZERO; N];
+    for arr in arrs {
+        temp.iter_mut()
+            .zip(IntoIter::new(arr))
+            .for_each(|(a, b)| *a += b);
+    }
+    temp.iter_mut().for_each(|a| *a /= L as u32);
+    temp
 }
 
 fn bench_send_msgs(data: BenchData<'static>) -> JoinHandle<ClientResult<[Duration; 4]>> {
