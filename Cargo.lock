@@ -45,6 +45,7 @@ name = "benches"
 version = "0.1.0"
 dependencies = [
  "harmony_rust_sdk",
+ "rand",
  "tokio",
  "tracing-subscriber",
 ]

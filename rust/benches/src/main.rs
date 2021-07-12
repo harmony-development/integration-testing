@@ -21,6 +21,7 @@ use harmony_rust_sdk::{
         *,
     },
 };
+use rand::{Rng, SeedableRng};
 use tokio::{
     task::JoinError,
     time::{Duration, Instant},
@@ -38,6 +39,7 @@ struct BenchData {
 #[tokio::main]
 async fn main() -> ClientResult<()> {
     match std::env::args().nth(1).unwrap().as_str() {
+        // Measures throughput.
         "send_messages" => {
             let datas = (1..=4)
                 .map(|num| format!("test{}@test.org", num))
@@ -81,6 +83,7 @@ async fn main() -> ClientResult<()> {
                 average[2].as_secs_f64(),
             );
         }
+        // Simulates 1000 clients writing 1000 messages to 1000 different guild -> channel.
         "smoketest" => {
             let run = bench_many_clients().await?;
             println!(
@@ -88,10 +91,14 @@ async fn main() -> ClientResult<()> {
                 run.as_secs_f64(),
             );
         }
+        // Simulates 10000 clients writing in a guild, with random wait times between each message sent by each client
+        // Each client sends 10 messages, and wait times can be between 200 - 1000 milliseconds. (wait times aren't included in total / average time)
+        // Each client also subscribes to an event stream and processes it.
         "single_guild" => {
-            let run = bench_many_clients_single_guild().await?;
+            let (run, dur) = bench_many_clients_single_guild().await?;
             println!(
-                "1000 clients x 1000 messages -> 1 guild with event streams: took {} secs",
+                "took {} secs, {} secs on average",
+                dur.as_secs_f64(),
                 run.as_secs_f64()
             );
         }
@@ -112,8 +119,10 @@ fn calc_average<const N: usize, const L: usize>(arrs: [[Duration; N]; L]) -> [Du
     temp
 }
 
-async fn bench_many_clients_single_guild() -> ClientResult<Duration> {
-    let mut clients = Vec::with_capacity(1000);
+async fn bench_many_clients_single_guild() -> ClientResult<(Duration, Duration)> {
+    const COUNT: usize = 1000;
+
+    let mut clients = Vec::with_capacity(COUNT);
     let (first_client, data) = new_test_client("test1@test.org").await?;
     let invite_id = create_invite(
         &first_client,
@@ -126,7 +135,7 @@ async fn bench_many_clients_single_guild() -> ClientResult<Duration> {
         .subscribe_events(vec![EventSource::Guild(data.guild_id)])
         .await?;
     clients.push((first_client, socket));
-    for i in 2..=1000 {
+    for i in 2..=COUNT {
         let client = new_test_client(format!("test{}@test.org", i).as_str())
             .await?
             .0;
@@ -144,18 +153,17 @@ async fn bench_many_clients_single_guild() -> ClientResult<Duration> {
         clients.push((client, socket));
     }
 
-    let mut handles = Vec::with_capacity(1000);
+    let mut handles = Vec::with_capacity(COUNT);
+    let since = Instant::now();
     for (client, mut socket) in clients {
         let socket = tokio::spawn(async move {
             loop {
-                socket.get_event().await;
+                while let Some(ev) = socket.get_event().await {
+                    ev.unwrap();
+                }
             }
         });
-        let msgs = tokio::spawn(async move {
-            let since = Instant::now();
-            send_messages(1000, &client, data).await?;
-            ClientResult::<_>::Ok(since.elapsed())
-        });
+        let msgs = tokio::spawn(async move { send_messages(10, &client, data, true).await });
         handles.push(async move {
             tokio::select! {
                 _ = socket => { panic!(); },
@@ -163,13 +171,20 @@ async fn bench_many_clients_single_guild() -> ClientResult<Duration> {
             }
         });
     }
-    let run: Duration = try_join_all(handles)
-        .await
+    let raw_results = try_join_all(handles).await;
+    let dur = since.elapsed();
+    let results = raw_results
         .unwrap()
         .into_iter()
-        .map(|res| res.unwrap())
-        .sum();
-    Ok(run / 1000)
+        .map(|res| {
+            let (a, b) = res.unwrap();
+            [a, b]
+        })
+        .fold([Duration::ZERO; 2], |total, arr| {
+            [total[0] + arr[0], total[1] + arr[1]]
+        });
+
+    Ok((results[0] / COUNT as u32, dur - results[1] / COUNT as u32))
 }
 
 async fn bench_many_clients() -> ClientResult<Duration> {
@@ -180,9 +195,9 @@ async fn bench_many_clients() -> ClientResult<Duration> {
     let mut handles = Vec::with_capacity(1000);
     for (client, data) in clients {
         handles.push(tokio::spawn(async move {
-            let since = Instant::now();
-            send_messages(1000, &client, data).await?;
-            ClientResult::<_>::Ok(since.elapsed())
+            send_messages(1000, &client, data, false)
+                .await
+                .map(|res| res.0)
         }));
     }
     let run: Duration = try_join_all(handles)
@@ -198,24 +213,38 @@ async fn bench_send_msgs(email: impl AsRef<str>) -> Result<ClientResult<[Duratio
     let (client, data) = new_test_client(email.as_ref()).await.unwrap();
 
     tokio::spawn(async move {
-        let sent_10_msg = send_messages(10, &client, data).await?;
-        let sent_100_msg = send_messages(100, &client, data).await?;
-        let sent_1000_msg = send_messages(1000, &client, data).await?;
+        let sent_10_msg = send_messages(10, &client, data, false).await?.0;
+        let sent_100_msg = send_messages(100, &client, data, false).await?.0;
+        let sent_1000_msg = send_messages(1000, &client, data, false).await?.0;
         Ok([sent_10_msg, sent_100_msg, sent_1000_msg])
     })
     .await
 }
 
-async fn send_messages(num: usize, client: &Client, data: BenchData) -> ClientResult<Duration> {
-    let since = Instant::now();
+async fn send_messages(
+    num: usize,
+    client: &Client,
+    data: BenchData,
+    simulate_wait: bool,
+) -> ClientResult<(Duration, Duration)> {
+    let mut dur = Duration::ZERO;
+    let mut wait_dur = Duration::ZERO;
+    let mut rng = rand::rngs::SmallRng::from_entropy();
     for i in 0..num {
+        let since = Instant::now();
         send_message(
             &client,
             SendMessage::new(data.guild_id, data.channel_id).text(i),
         )
         .await?;
+        dur += since.elapsed();
+        if simulate_wait {
+            let wait = Duration::from_millis(rng.gen_range(200..=1000));
+            wait_dur += wait;
+            tokio::time::sleep(wait).await;
+        }
     }
-    Ok(since.elapsed())
+    Ok((dur, wait_dur))
 }
 
 async fn login(client: &Client, email: &str) -> ClientResult<()> {
