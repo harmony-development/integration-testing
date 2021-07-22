@@ -309,7 +309,7 @@ dependencies = [
 [[package]]
 name = "harmony_derive"
 version = "0.1.2"
-source = "git+https://github.com/harmony-development/harmony_rust_sdk.git?branch=master#d20ecd8cad694756dcff5fe14975805b8717b811"
+source = "git+https://github.com/harmony-development/harmony_rust_sdk.git?branch=master#a45db34699141276ef4870c7a0ae1a3037ddc57e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -319,7 +319,7 @@ dependencies = [
 [[package]]
 name = "harmony_rust_sdk"
 version = "0.6.1"
-source = "git+https://github.com/harmony-development/harmony_rust_sdk.git?branch=master#d20ecd8cad694756dcff5fe14975805b8717b811"
+source = "git+https://github.com/harmony-development/harmony_rust_sdk.git?branch=master#a45db34699141276ef4870c7a0ae1a3037ddc57e"
 dependencies = [
  "derive-new",
  "derive_more",
