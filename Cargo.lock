@@ -309,7 +309,7 @@ dependencies = [
 [[package]]
 name = "harmony_derive"
 version = "0.1.2"
-source = "git+https://github.com/harmony-development/harmony_rust_sdk.git?branch=master#a45db34699141276ef4870c7a0ae1a3037ddc57e"
+source = "git+https://github.com/harmony-development/harmony_rust_sdk.git?branch=master#21627b1cc0e9f8c982f94f463e5d1d37d580161a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -319,7 +319,7 @@ dependencies = [
 [[package]]
 name = "harmony_rust_sdk"
 version = "0.6.1"
-source = "git+https://github.com/harmony-development/harmony_rust_sdk.git?branch=master#a45db34699141276ef4870c7a0ae1a3037ddc57e"
+source = "git+https://github.com/harmony-development/harmony_rust_sdk.git?branch=master#21627b1cc0e9f8c982f94f463e5d1d37d580161a"
 dependencies = [
  "derive-new",
  "derive_more",
@@ -786,9 +786,9 @@ checksum = "bc881b2c22681370c6a780e47af9840ef841837bc98118431d4e1868bd0c1086"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.27"
+version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0d8caf72986c1a598726adc988bb5984792ef84f5ee5aa50209145ee8077038"
+checksum = "5c7ed8b8c7b886ea3ed7dde405212185f423ab44682667c8c6dd14aa1d9f6612"
 dependencies = [
  "unicode-xid",
 ]
