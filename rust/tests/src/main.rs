@@ -39,17 +39,9 @@ const EXTERNAL_URL: &str =
 
 const INSTANT_VIEW_URL: &str = "https://duckduckgo.com/";
 
-const LEGATO_DATA: TestData = TestData {
+const SCHERZO_DATA: TestData = TestData {
     server: "https://chat.harmonyapp.io:2289",
     name_res: "https://chat.harmonyapp.io",
-    guild: 2725839961419939845,
-    channel: 2725839961420005381,
-    file_id: "403cb46c-49cf-4ae1-b876-f38eb26accb0",
-};
-
-const SCHERZO_DATA: TestData = TestData {
-    server: "https://scherzo.harmonyapp.io:2289",
-    name_res: "https://scherzo.harmonyapp.io",
     guild: 9496763902128586438,
     channel: 6751423531778516907,
     file_id: "agfR1jmjclto9OoGwmlNvM95jBLxMi0zTiu5ilTaj095Cap2QFX2OlQyfB66iG2W",
@@ -86,23 +78,9 @@ async fn main() {
         TESTS_TOTAL = 0;
         TOTAL_TIME = Duration::ZERO;
     }
-    let l = tests(LEGATO_DATA).instrument(info_span!("legato")).await;
-    let lt = unsafe { TOTAL_TIME };
-
-    unsafe {
-        TESTS_COMPLETE = 0;
-        TESTS_TOTAL = 0;
-        TOTAL_TIME = Duration::ZERO;
-    }
     let s = tests(SCHERZO_DATA).instrument(info_span!("scherzo")).await;
     let st = unsafe { TOTAL_TIME };
 
-    info!(
-        "Legato: {} out of {} tests successful, completed in {} secs",
-        l,
-        unsafe { TESTS_TOTAL },
-        lt.as_secs_f64()
-    );
     info!(
         "Scherzo: {} out of {} tests successful, completed in {} secs",
         s,
