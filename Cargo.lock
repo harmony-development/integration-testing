@@ -318,7 +318,7 @@ dependencies = [
 [[package]]
 name = "harmony_derive"
 version = "0.1.2"
-source = "git+https://github.com/harmony-development/harmony_rust_sdk.git?branch=master#25ce55427ebb13543a31859f7cee9a33142c044d"
+source = "git+https://github.com/harmony-development/harmony_rust_sdk.git?branch=master#d2c6076ead6f6cf9115a22e52192413247b4e25e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -328,7 +328,7 @@ dependencies = [
 [[package]]
 name = "harmony_rust_sdk"
 version = "0.6.1"
-source = "git+https://github.com/harmony-development/harmony_rust_sdk.git?branch=master#25ce55427ebb13543a31859f7cee9a33142c044d"
+source = "git+https://github.com/harmony-development/harmony_rust_sdk.git?branch=master#d2c6076ead6f6cf9115a22e52192413247b4e25e"
 dependencies = [
  "derive-new",
  "derive_more",
@@ -1421,9 +1421,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-subscriber"
-version = "0.2.21"
+version = "0.2.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7d29c0f56bcd17117430bc60fd10624b419ab8a3b5c358796a31e9a37a83a65"
+checksum = "62af966210b88ad5776ee3ba12d5f35b8d6a2b2a12168f3080cf02b814d7376b"
 dependencies = [
  "ansi_term",
  "chrono",
