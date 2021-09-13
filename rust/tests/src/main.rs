@@ -82,7 +82,7 @@ async fn main() {
     let st = unsafe { TOTAL_TIME };
 
     info!(
-        "Scherzo: {} out of {} tests successful, completed in {} secs",
+        "Scherzo: {} tests successful, {} tests ran, completed in {} secs",
         s,
         unsafe { TESTS_TOTAL },
         st.as_secs_f64()
@@ -106,25 +106,26 @@ async fn tests(data: TestData) -> u16 {
             test(
                 "client auth",
                 async {
-                    client.begin_auth().await?;
-                    let mut auth_sock = client.auth_stream().await?;
+                    async fn wait_for_socket(sock: &mut AuthSocket) {
+                        let fut = async move { while sock.get_step().await.is_none() {} };
+                        let dur = Duration::from_secs(5);
+
+                        tokio::time::timeout(dur, fut)
+                            .await
+                            .expect("did not receive auth step from stream");
+                    }
 
                     let login = async {
+                        client.begin_auth().await?;
+                        let mut auth_sock = client.auth_stream().await?;
+
                         client.next_auth_step(AuthStepResponse::Initial).await?;
-                        tokio::time::timeout(Duration::from_secs(5), async {
-                            while auth_sock.get_step().await.is_none() {}
-                        })
-                        .await
-                        .expect("did not receive auth step from stream");
+                        wait_for_socket(&mut auth_sock).await;
 
                         client
                             .next_auth_step(AuthStepResponse::login_choice())
                             .await?;
-                        tokio::time::timeout(Duration::from_secs(5), async {
-                            while auth_sock.get_step().await.is_none() {}
-                        })
-                        .await
-                        .expect("did not receive auth step from stream");
+                        wait_for_socket(&mut auth_sock).await;
 
                         client
                             .next_auth_step(AuthStepResponse::login_form(
@@ -132,11 +133,7 @@ async fn tests(data: TestData) -> u16 {
                                 PASSWORD.expect("no tester password?"),
                             ))
                             .await?;
-                        tokio::time::timeout(Duration::from_secs(5), async {
-                            while auth_sock.get_step().await.is_none() {}
-                        })
-                        .await
-                        .expect("did not receive auth step from stream");
+                        wait_for_socket(&mut auth_sock).await;
 
                         ClientResult::Ok(())
                     };
@@ -146,20 +143,12 @@ async fn tests(data: TestData) -> u16 {
                         let mut auth_sock = client.auth_stream().await?;
 
                         client.next_auth_step(AuthStepResponse::Initial).await?;
-                        tokio::time::timeout(Duration::from_secs(5), async {
-                            while auth_sock.get_step().await.is_none() {}
-                        })
-                        .await
-                        .expect("did not receive auth step from stream");
+                        wait_for_socket(&mut auth_sock).await;
 
                         client
                             .next_auth_step(AuthStepResponse::register_choice())
                             .await?;
-                        tokio::time::timeout(Duration::from_secs(5), async {
-                            while auth_sock.get_step().await.is_none() {}
-                        })
-                        .await
-                        .expect("did not receive auth step from stream");
+                        wait_for_socket(&mut auth_sock).await;
 
                         client
                             .next_auth_step(AuthStepResponse::register_form(
@@ -168,11 +157,7 @@ async fn tests(data: TestData) -> u16 {
                                 PASSWORD.expect("no tester password?"),
                             ))
                             .await?;
-                        tokio::time::timeout(Duration::from_secs(5), async {
-                            while auth_sock.get_step().await.is_none() {}
-                        })
-                        .await
-                        .expect("did not receive auth step from stream");
+                        wait_for_socket(&mut auth_sock).await;
                     }
 
                     ClientResult::Ok(())
