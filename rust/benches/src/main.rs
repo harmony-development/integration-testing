@@ -3,19 +3,15 @@ use std::array::IntoIter;
 use harmony_rust_sdk::{
     api::{
         auth::{auth_step::Step, next_step_request::form_fields::Field},
-        chat::{EventSource, GetGuildListRequest, InviteId, JoinGuildRequest},
+        chat::{
+            EventSource, GetGuildChannelsRequest, GetGuildListRequest, InviteId, JoinGuildRequest,
+        },
         exports::hrpc::futures_util::future::try_join_all,
     },
     client::{
         api::{
             auth::*,
-            chat::{
-                channel::get_guild_channels,
-                guild::{create_guild, get_guild_list, join_guild, CreateGuild},
-                invite::{create_invite, CreateInvite},
-                message::*,
-                GuildId,
-            },
+            chat::{guild::CreateGuild, invite::CreateInvite, message::SendMessage},
         },
         error::*,
         *,
@@ -124,12 +120,14 @@ async fn bench_many_clients_single_guild() -> ClientResult<(Duration, Duration)>
 
     let mut clients = Vec::with_capacity(COUNT);
     let (first_client, data) = new_test_client("test1@test.org").await?;
-    let invite_id = create_invite(
-        &first_client,
-        CreateInvite::new(InviteId::new("test").unwrap(), -1, data.guild_id),
-    )
-    .await?
-    .name;
+    let invite_id = first_client
+        .call(CreateInvite::new(
+            InviteId::new("test").unwrap(),
+            0,
+            data.guild_id,
+        ))
+        .await?
+        .invite_id;
     let request = JoinGuildRequest { invite_id };
     let socket = first_client
         .subscribe_events(vec![EventSource::Guild(data.guild_id)])
@@ -139,13 +137,14 @@ async fn bench_many_clients_single_guild() -> ClientResult<(Duration, Duration)>
         let client = new_test_client(format!("test{}@test.org", i).as_str())
             .await?
             .0;
-        if !get_guild_list(&client, GetGuildListRequest {})
+        if !client
+            .call(GetGuildListRequest {})
             .await?
             .guilds
             .iter()
             .any(|g| g.guild_id == data.guild_id)
         {
-            join_guild(&client, request.clone()).await?;
+            client.call(request.clone()).await?;
         }
         let socket = client
             .subscribe_events(vec![EventSource::Guild(data.guild_id)])
@@ -232,11 +231,9 @@ async fn send_messages(
     let mut rng = rand::rngs::SmallRng::from_entropy();
     for i in 0..num {
         let since = Instant::now();
-        send_message(
-            &client,
-            SendMessage::new(data.guild_id, data.channel_id).text(i),
-        )
-        .await?;
+        client
+            .call(SendMessage::new(data.guild_id, data.channel_id).text(i))
+            .await?;
         dur += since.elapsed();
         if simulate_wait {
             let wait = Duration::from_millis(rng.gen_range(200..=1000));
@@ -265,7 +262,7 @@ async fn register(client: &Client, email: &str) -> ClientResult<()> {
     let register = client
         .next_auth_step(AuthStepResponse::register_choice())
         .await?;
-    if let Some(Step::Form(form)) = register.and_then(|s| s.step) {
+    if let Some(Step::Form(form)) = register.and_then(|s| s.step).and_then(|s| s.step) {
         client
             .next_auth_step(AuthStepResponse::form(
                 form.fields
@@ -289,18 +286,16 @@ async fn new_test_client(email: &str) -> ClientResult<(Client, BenchData)> {
         register(&client, email).await?;
     }
 
-    let guild_id = if let Some(entry) = get_guild_list(&client, GetGuildListRequest {})
-        .await?
-        .guilds
-        .pop()
-    {
+    let guild_id = if let Some(entry) = client.call(GetGuildListRequest {}).await?.guilds.pop() {
         entry.guild_id
     } else {
-        create_guild(&client, CreateGuild::new("test".to_string()))
+        client
+            .call(CreateGuild::new("test".to_string()))
             .await?
             .guild_id
     };
-    let channel_id = get_guild_channels(&client, GuildId::new(guild_id))
+    let channel_id = client
+        .call(GetGuildChannelsRequest::new(guild_id))
         .await?
         .channels
         .pop()
