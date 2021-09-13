@@ -107,16 +107,30 @@ async fn tests(data: TestData) -> u16 {
                 "client auth",
                 async {
                     client.begin_auth().await?;
+                    let mut auth_sock = client.auth_stream().await?;
+
                     client.next_auth_step(AuthStepResponse::Initial).await?;
+                    tokio::time::timeout(Duration::from_secs(5), auth_sock.get_step())
+                        .await
+                        .unwrap();
+
                     client
                         .next_auth_step(AuthStepResponse::login_choice())
                         .await?;
+                    tokio::time::timeout(Duration::from_secs(5), auth_sock.get_step())
+                        .await
+                        .unwrap();
+
                     client
                         .next_auth_step(AuthStepResponse::login_form(
                             EMAIL,
                             PASSWORD.expect("no tester password?"),
                         ))
                         .await?;
+                    tokio::time::timeout(Duration::from_secs(5), auth_sock.get_step())
+                        .await
+                        .unwrap();
+
                     ClientResult::Ok(())
                 },
                 |_a| async {
