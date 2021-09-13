@@ -50,6 +50,7 @@ static mut TESTS_COMPLETE: u16 = 0;
 static mut TESTS_TOTAL: u16 = 0;
 static mut TOTAL_TIME: Duration = Duration::ZERO;
 
+#[derive(Debug, Clone, Copy)]
 struct TestData {
     server: &'static str,
     name_res: &'static str,
@@ -90,17 +91,19 @@ async fn main() {
 
 async fn tests(data: TestData) -> u16 {
     {
-        test! {
+        test(
             "name resolution",
             Client::new(data.name_res.parse().unwrap(), None),
-        }
+            |_| async {},
+        )
+        .await;
     }
 
-    test! {
+    test(
         "client connection",
         Client::new(data.server.parse().unwrap(), None),
-        |client| {
-            test! {
+        |client| async move {
+            test(
                 "client auth",
                 async {
                     client.begin_auth().await?;
@@ -116,153 +119,173 @@ async fn tests(data: TestData) -> u16 {
                         .await?;
                     ClientResult::Ok(())
                 },
-                |_a| {
+                |_a| async {
                     check!(client.auth_status().is_authenticated(), true);
 
-                    test! {
+                    test(
                         "check logged in",
                         client.call(CheckLoggedInRequest::new()),
-                    }
+                        |_| async {},
+                    )
+                    .await;
                     let user_id = client.auth_status().session().unwrap().user_id;
 
-                    test! {
+                    test_no_hand(
                         "profile update",
-                        client.call(
-                            UpdateProfile::default().with_new_status(UserStatus::Online),
-                        ),
-                    }
+                        client.call(UpdateProfile::default().with_new_status(UserStatus::Online)),
+                    )
+                    .await;
 
-                    test! {
+                    test_no_hand(
                         "preview guild",
                         client.call(PreviewGuildRequest::new("harmony".to_string())),
-                    }
+                    )
+                    .await;
 
-                    test! {
+                    test(
                         "get guild list",
                         client.call(GetGuildListRequest {}),
-                        |response| {
+                        |response| async move {
                             check!(response.guilds.len(), 1);
-                        }
-                    }
+                        },
+                    )
+                    .await;
 
-                    test! {
+                    test_no_hand(
                         "get guild roles",
                         client.call(GetGuildRolesRequest::new(data.guild)),
-                    }
+                    )
+                    .await;
 
-                    test! {
+                    test(
                         "get guild members",
                         client.call(GetGuildMembersRequest::new(data.guild)),
-                        |response| {
+                        |response| async {
                             check!(response.members.len(), 1);
 
-                            test! {
+                            test_no_hand(
                                 "get profile",
-                                client.call(
-                                    GetProfileRequest::new(
-                                        *response
-                                            .members
-                                            .first()
-                                            .expect("expected at least one user in guild"),
-                                    ),
-                                ),
-                            }
+                                client.call(GetProfileRequest::new(
+                                    *response
+                                        .members
+                                        .first()
+                                        .expect("expected at least one user in guild"),
+                                )),
+                            )
+                            .await;
 
-                            test! {
-                                "get user bulk",
-                                {
-                                    let requests = response.members.into_iter().map(|user_id| {
+                            test_no_hand("get user bulk", {
+                                let requests = response
+                                    .members
+                                    .into_iter()
+                                    .map(|user_id| {
                                         let req = GetProfileRequest::new(user_id);
                                         let data = encode_protobuf_message(req);
                                         data.to_vec()
-                                    }).collect();
-                                    client.call(BatchSameRequest::new(GetProfileRequest::ENDPOINT_PATH.to_string(), requests))
-                                },
-                            }
-                        }
-                    }
+                                    })
+                                    .collect();
+                                client.call(BatchSameRequest::new(
+                                    GetProfileRequest::ENDPOINT_PATH.to_string(),
+                                    requests,
+                                ))
+                            })
+                            .await;
+                        },
+                    )
+                    .await;
 
-                    test! {
-                        "get emote packs",
-                        client.call(GetEmotePacksRequest {}),
-                    }
+                    test_no_hand("get emote packs", client.call(GetEmotePacksRequest {})).await;
 
-                    test! {
+                    test_no_hand(
                         "get guild channels",
                         client.call(GetGuildChannelsRequest::new(data.guild)),
-                    }
+                    )
+                    .await;
 
-                    test! {
+                    test_no_hand(
                         "typing",
                         client.call(TypingRequest::new(data.guild, data.channel)),
-                    }
+                    )
+                    .await;
 
                     let current_time = std::time::UNIX_EPOCH.elapsed().unwrap().as_secs();
                     let msg = format!("test at {}", current_time);
-                    test! {
+                    test_no_hand(
                         "send message",
-                        client.call(
-                            SendMessage::new(data.guild, data.channel).text(&msg),
-                        ),
-                    }
+                        client.call(SendMessage::new(data.guild, data.channel).text(&msg)),
+                    )
+                    .await;
 
-                    test! {
+                    test(
                         "get channel messages",
                         client.call(GetChannelMessages::new(data.guild, data.channel)),
                         |response| {
-                            let our_msg = response.messages.first().unwrap();
-                            let (message_id, message) = (our_msg.message_id, our_msg.message.as_ref().unwrap());
-                            check!(message.text(), Some(msg.as_str()));
+                            let client = client.clone();
+                            async move {
+                                let our_msg = response.messages.first().unwrap();
+                                let (message_id, message) =
+                                    (our_msg.message_id, our_msg.message.as_ref().unwrap());
+                                check!(message.text(), Some(msg.as_str()));
 
-                            let new_content = rand::thread_rng()
-                                .sample_iter(rand::distributions::Alphanumeric)
-                                .take(16)
-                                .map(|c| c as char)
-                                .collect::<String>();
+                                let new_content = rand::thread_rng()
+                                    .sample_iter(rand::distributions::Alphanumeric)
+                                    .take(16)
+                                    .map(|c| c as char)
+                                    .collect::<String>();
 
-                            test! {
-                                "edit message",
-                                client.call(
-                                    UpdateMessageTextRequest {
+                                test(
+                                    "edit message",
+                                    client.call(UpdateMessageTextRequest {
                                         guild_id: data.guild,
                                         channel_id: data.channel,
                                         message_id,
-                                        new_content: Some(FormattedText::default().with_text(new_content.clone())),
+                                        new_content: Some(
+                                            FormattedText::default().with_text(new_content.clone()),
+                                        ),
+                                    }),
+                                    |_| async {
+                                        test(
+                                            "compare get message",
+                                            client.call(GetMessageRequest {
+                                                guild_id: data.guild,
+                                                channel_id: data.channel,
+                                                message_id,
+                                            }),
+                                            |response| async move {
+                                                check!(
+                                                    response.message.as_ref().unwrap().text(),
+                                                    Some(new_content.as_str())
+                                                );
+                                            },
+                                        )
+                                        .await;
                                     },
-                                ),
-                                |response| {
-                                    test! {
-                                        "compare get message",
-                                        client.call(GetMessageRequest {
-                                            guild_id: data.guild,
-                                            channel_id: data.channel,
-                                            message_id,
-                                        }),
-                                        |response| {
-                                            check!(response.message.as_ref().unwrap().text(), Some(new_content.as_str()));
-                                        }
-                                    }
-                                }
+                                )
+                                .await;
                             }
-                        }
-                    }
+                        },
+                    )
+                    .await;
 
-                    test! {
+                    test_no_hand(
                         "instant view",
                         client.call(InstantViewRequest::new(INSTANT_VIEW_URL.to_string())),
-                    }
+                    )
+                    .await;
 
-                    test! {
+                    test_no_hand(
                         "can instant view",
                         client.call(CanInstantViewRequest::new(INSTANT_VIEW_URL.to_string())),
-                    }
+                    )
+                    .await;
 
-                    test! {
+                    test_no_hand(
                         "fetch link metadata",
                         client.call(FetchLinkMetadataRequest::new(INSTANT_VIEW_URL.to_string())),
-                    }
+                    )
+                    .await;
 
-                    test! {
+                    test(
                         "upload media",
                         rest::upload(
                             &client,
@@ -270,91 +293,103 @@ async fn tests(data: TestData) -> u16 {
                             CONTENT_TYPE.to_string(),
                             FILE_DATA.as_bytes().to_vec(),
                         ),
-                        |response| {
-                            test! {
-                                "upload response id",
-                                response.text(),
-                            }
-                        }
-                    }
+                        |response| async {
+                            test_no_hand("upload response id", response.text()).await;
+                        },
+                    )
+                    .await;
 
-                    test! {
+                    test(
                         "download media",
                         rest::download(&client, FileId::Id(data.file_id.to_string())),
-                        |response| {
-
+                        |response| async {
                             let content_type = response
-                            .headers()
-                            .get("Content-Type")
-                            .map(|c| c.to_str().ok().map(|c| c.to_string()))
-                            .flatten();
+                                .headers()
+                                .get("Content-Type")
+                                .map(|c| c.to_str().ok().map(|c| c.to_string()))
+                                .flatten();
 
                             if let Some(content_type) = content_type {
-                                test! {
+                                test(
                                     "download response text",
                                     response.text(),
-                                    |response| {
+                                    |response| async move {
                                         check!(response.as_str(), FILE_DATA);
-                                    }
-                                }
+                                    },
+                                )
+                                .await;
                                 check!(content_type.as_str(), CONTENT_TYPE);
                             }
-                        }
-                    }
+                        },
+                    )
+                    .await;
 
-                    test! {
+                    test(
                         "download external file",
                         rest::download(&client, FileId::External(EXTERNAL_URL.parse().unwrap())),
-                        |response| {
+                        |response| async {
                             if response.bytes().await.is_err() {
                                 tracing::error!("failed to download external file bytes");
                             } else {
                                 tracing::info!("successfully downloaded external file bytes");
                             }
-                        }
-                    }
+                        },
+                    )
+                    .await;
 
-                    test! {
+                    test(
                         "get guild channels",
                         client.call(GetGuildChannelsRequest::new(data.guild)),
-                        |response| {
+                        |response| async move {
                             check!(response.channels.len(), 1);
-                        }
-                    }
+                        },
+                    )
+                    .await;
 
-                    test! {
+                    test(
                         "create channel",
-                        client.call(
-                            CreateChannel::new(data.guild, "test".to_string(), Place::bottom(data.channel)),
-                        ),
+                        client.call(CreateChannel::new(
+                            data.guild,
+                            "test".to_string(),
+                            Place::bottom(data.channel),
+                        )),
                         |response| {
-                            test! {
-                                "get channels compare new",
-                                client.call(GetGuildChannelsRequest::new(data.guild)),
-                                |response| {
-                                    check!(response.channels.len(), 2);
-                                }
+                            let client = client.clone();
+                            async move {
+                                test(
+                                    "get channels compare new",
+                                    client.call(GetGuildChannelsRequest::new(data.guild)),
+                                    |response| async move {
+                                        check!(response.channels.len(), 2);
+                                    },
+                                )
+                                .await;
+                                test(
+                                    "delete channel",
+                                    client
+                                        .call(DeleteChannel::new(data.guild, response.channel_id)),
+                                    |_| async {
+                                        test(
+                                            "get channels compare delete",
+                                            client.call(GetGuildChannelsRequest::new(data.guild)),
+                                            |response| async move {
+                                                check!(response.channels.len(), 1);
+                                            },
+                                        )
+                                        .await;
+                                    },
+                                )
+                                .await;
                             }
-                            test! {
-                                "delete channel",
-                                client.call(DeleteChannel::new(data.guild, response.channel_id)),
-                                |response| {
-                                    test! {
-                                        "get channels compare delete",
-                                        client.call(GetGuildChannelsRequest::new(data.guild)),
-                                        |response| {
-                                            check!(response.channels.len(), 1);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                        },
+                    )
+                    .await;
 
-                    test! {
+                    test_no_hand(
                         "get guild information",
                         client.call(GetGuildRequest::new(data.guild)),
-                    }
+                    )
+                    .await;
 
                     let new_name = rand::thread_rng()
                         .sample_iter(rand::distributions::Alphanumeric)
@@ -362,110 +397,143 @@ async fn tests(data: TestData) -> u16 {
                         .map(|c| c as char)
                         .collect::<String>();
 
-                    test! {
+                    test(
                         "update guild information",
                         client.call(
-                            UpdateGuildInformation::new(data.guild).with_new_guild_name(new_name.clone())
+                            UpdateGuildInformation::new(data.guild)
+                                .with_new_guild_name(new_name.clone()),
                         ),
-                        |response| {
-                            test! {
-                                "compare new info",
-                                client.call(GetGuildRequest::new(data.guild)),
-                                |response| {
-                                    check!(response.guild.as_ref().unwrap().name, new_name);
-                                }
+                        {
+                            let client = client.clone();
+                            move |_| async move {
+                                test(
+                                    "compare new info",
+                                    client.call(GetGuildRequest::new(data.guild)),
+                                    |response| async move {
+                                        check!(response.guild.as_ref().unwrap().name, new_name);
+                                    },
+                                )
+                                .await;
                             }
-                        }
-                    }
+                        },
+                    )
+                    .await;
 
-                    test! {
+                    test(
                         "create guild",
                         client.call(CreateGuild::new("test".to_string())),
                         |response| {
-                            test! {
-                                "delete guild",
-                                client.call(DeleteGuildRequest::new(response.guild_id)),
+                            let client = client.clone();
+                            async move {
+                                test_no_hand(
+                                    "delete guild",
+                                    client.call(DeleteGuildRequest::new(response.guild_id)),
+                                )
+                                .await;
                             }
-                        }
-                    }
+                        },
+                    )
+                    .await;
 
-                    test! {
+                    test(
                         "query has permission",
                         client.call(
-                            QueryHasPermission::new(data.guild, "messages.send".to_string()).with_channel_id(data.channel),
+                            QueryHasPermission::new(data.guild, "messages.send".to_string())
+                                .with_channel_id(data.channel),
                         ),
-                        |response| {
+                        |response| async move {
                             check!(response.ok, true);
-                        }
-                    }
+                        },
+                    )
+                    .await;
 
-                    test! {
+                    test(
                         "set profile offline",
                         client.call(
-                            UpdateProfile::default().with_new_status(UserStatus::OfflineUnspecified),
+                            UpdateProfile::default()
+                                .with_new_status(UserStatus::OfflineUnspecified),
                         ),
-                        |response| {
-                            test! {
+                        |_| async {
+                            test(
                                 "compare profile status",
                                 client.call(GetProfileRequest::new(user_id)),
-                                |response| {
-                                    check!(response.profile.as_ref().unwrap().user_status, i32::from(UserStatus::OfflineUnspecified));
-                                }
-                            }
-                        }
-                    }
+                                |response| async move {
+                                    check!(
+                                        response.profile.as_ref().unwrap().user_status,
+                                        i32::from(UserStatus::OfflineUnspecified)
+                                    );
+                                },
+                            )
+                            .await;
+                        },
+                    )
+                    .await;
 
-                    test! {
+                    test(
                         "set profile bot",
-                        client.call(
-                            UpdateProfile::default().with_new_is_bot(true),
-                        ),
-                        |response| {
-                            test! {
+                        client.call(UpdateProfile::default().with_new_is_bot(true)),
+                        |_| async {
+                            test(
                                 "compare profile bot",
                                 client.call(GetProfileRequest::new(user_id)),
-                                |response| {
+                                |response| async move {
                                     check!(response.profile.as_ref().unwrap().is_bot, true);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+                                },
+                            )
+                            .await;
+                        },
+                    )
+                    .await;
+                },
+            )
+            .await;
+        },
+    )
+    .await;
 
     unsafe { TESTS_COMPLETE }
 }
 
-#[macro_export]
-macro_rules! test {
-    ($name:expr, $res:expr,) => {
-        test!($name, $res, |_a| ());
-    };
-    {
-        $name:expr,
-        $res:expr,
-        |$val:ident| $sub:expr
-    } => {
-        info!("Testing {}...", $name);
-        unsafe { TESTS_TOTAL += 1; }
-        let span = info_span!($name);
-        let ins = Instant::now();
-        async {
-            match $res.await {
-                Ok($val) => {
-                    let time_passed = ins.elapsed();
-                    unsafe { TOTAL_TIME += time_passed; }
-                    info!("successful in {} ns", time_passed.as_nanos());
-                    info!("response: {:?}", $val);
-                    unsafe { TESTS_COMPLETE += 1; }
-                    $sub
-                },
-                Err(err) => error!("error occured: {}", err),
+async fn test<Fut, HandFut, Hand, Out, Err>(name: &'static str, res: Fut, hand: Hand)
+where
+    Err: std::error::Error,
+    Out: Debug,
+    Fut: Future<Output = Result<Out, Err>>,
+    HandFut: Future<Output = ()>,
+    Hand: FnOnce(Out) -> HandFut,
+{
+    info!("Testing {}...", name);
+    unsafe {
+        TESTS_TOTAL += 1;
+    }
+    let ins = Instant::now();
+    async {
+        match res.await {
+            Ok(val) => {
+                let time_passed = ins.elapsed();
+                unsafe {
+                    TOTAL_TIME += time_passed;
+                }
+                info!("successful in {} ns", time_passed.as_nanos());
+                info!("response: {:?}", val);
+                unsafe {
+                    TESTS_COMPLETE += 1;
+                }
+                hand(val).await
             }
-        }.instrument(span).await
-    };
+            Err(err) => error!("error occured: {}", err),
+        }
+    }
+    .await
+}
+
+async fn test_no_hand<Fut, Out, Err>(name: &'static str, res: Fut)
+where
+    Err: std::error::Error,
+    Out: Debug,
+    Fut: Future<Output = Result<Out, Err>>,
+{
+    test(name, res, |_| async {}).await
 }
 
 #[macro_export]
@@ -484,7 +552,11 @@ macro_rules! check {
     };
 }
 
-use std::{fmt, time::Duration};
+use std::{
+    fmt::{self, Debug},
+    future::Future,
+    time::Duration,
+};
 use tracing::{Event, Subscriber};
 use tracing_subscriber::fmt::{FmtContext, FormatEvent, FormatFields};
 use tracing_subscriber::registry::LookupSpan;
