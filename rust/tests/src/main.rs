@@ -109,27 +109,71 @@ async fn tests(data: TestData) -> u16 {
                     client.begin_auth().await?;
                     let mut auth_sock = client.auth_stream().await?;
 
-                    client.next_auth_step(AuthStepResponse::Initial).await?;
-                    tokio::time::timeout(Duration::from_secs(5), auth_sock.get_step())
+                    let login = async {
+                        client.next_auth_step(AuthStepResponse::Initial).await?;
+                        tokio::time::timeout(Duration::from_secs(5), async {
+                            while auth_sock.get_step().await.is_none() {}
+                        })
                         .await
-                        .unwrap();
+                        .expect("did not receive auth step from stream");
 
-                    client
-                        .next_auth_step(AuthStepResponse::login_choice())
-                        .await?;
-                    tokio::time::timeout(Duration::from_secs(5), auth_sock.get_step())
+                        client
+                            .next_auth_step(AuthStepResponse::login_choice())
+                            .await?;
+                        tokio::time::timeout(Duration::from_secs(5), async {
+                            while auth_sock.get_step().await.is_none() {}
+                        })
                         .await
-                        .unwrap();
+                        .expect("did not receive auth step from stream");
 
-                    client
-                        .next_auth_step(AuthStepResponse::login_form(
-                            EMAIL,
-                            PASSWORD.expect("no tester password?"),
-                        ))
-                        .await?;
-                    tokio::time::timeout(Duration::from_secs(5), auth_sock.get_step())
+                        client
+                            .next_auth_step(AuthStepResponse::login_form(
+                                EMAIL,
+                                PASSWORD.expect("no tester password?"),
+                            ))
+                            .await?;
+                        tokio::time::timeout(Duration::from_secs(5), async {
+                            while auth_sock.get_step().await.is_none() {}
+                        })
                         .await
-                        .unwrap();
+                        .expect("did not receive auth step from stream");
+
+                        ClientResult::Ok(())
+                    };
+
+                    if login.await.is_err() {
+                        client.begin_auth().await?;
+                        let mut auth_sock = client.auth_stream().await?;
+
+                        client.next_auth_step(AuthStepResponse::Initial).await?;
+                        tokio::time::timeout(Duration::from_secs(5), async {
+                            while auth_sock.get_step().await.is_none() {}
+                        })
+                        .await
+                        .expect("did not receive auth step from stream");
+
+                        client
+                            .next_auth_step(AuthStepResponse::register_choice())
+                            .await?;
+                        tokio::time::timeout(Duration::from_secs(5), async {
+                            while auth_sock.get_step().await.is_none() {}
+                        })
+                        .await
+                        .expect("did not receive auth step from stream");
+
+                        client
+                            .next_auth_step(AuthStepResponse::register_form(
+                                EMAIL,
+                                "rust_sdk_test",
+                                PASSWORD.expect("no tester password?"),
+                            ))
+                            .await?;
+                        tokio::time::timeout(Duration::from_secs(5), async {
+                            while auth_sock.get_step().await.is_none() {}
+                        })
+                        .await
+                        .expect("did not receive auth step from stream");
+                    }
 
                     ClientResult::Ok(())
                 },
