@@ -40,9 +40,9 @@ const INSTANT_VIEW_URL: &str = "https://duckduckgo.com/";
 const SCHERZO_DATA: TestData = TestData {
     server: "https://chat.harmonyapp.io:2289",
     name_res: "https://chat.harmonyapp.io",
-    guild: 9496763902128586438,
-    channel: 6751423531778516907,
-    file_id: "agfR1jmjclto9OoGwmlNvM95jBLxMi0zTiu5ilTaj095Cap2QFX2OlQyfB66iG2W",
+    guild: 18418463542574935072,
+    channel: 3775933737548659938,
+    file_id: "23c782a8b622282ebc24b5664beef9500fa2a5b59131fac5b757b8e86a0e8e20",
 };
 
 static mut TESTS_COMPLETE: u16 = 0;
@@ -106,7 +106,14 @@ async fn tests(data: TestData) -> u16 {
                 "client auth",
                 async {
                     async fn wait_for_socket(sock: &mut AuthSocket) {
-                        let fut = async move { while sock.get_step().await.is_none() {} };
+                        let fut = async move {
+                            loop {
+                                if let Some(a) = sock.get_step().await {
+                                    tracing::info!("auth socket reply: {:?}", a);
+                                    break;
+                                }
+                            }
+                        };
                         let dur = Duration::from_secs(5);
 
                         tokio::time::timeout(dur, fut)
