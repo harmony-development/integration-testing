@@ -1,7 +1,7 @@
 use harmony_rust_sdk::{
     api::{
         auth::*, batch::*, chat::*, emote::*, exports::hrpc::encode_protobuf_message,
-        exports::hrpc::tracing, mediaproxy::*, profile::*,
+        exports::hrpc::tracing, mediaproxy::*, profile::*, Endpoint,
     },
     client::{
         api::{
@@ -13,14 +13,13 @@ use harmony_rust_sdk::{
                 permissions::QueryHasPermission,
             },
             profile::{UpdateProfile, UserStatus},
-            *,
+            rest::{self, FileId},
         },
         error::*,
         *,
     },
 };
 use rand::prelude::*;
-use rest::FileId;
 use tokio::time::Instant;
 use tracing::{error, info, info_span, Instrument, Level};
 use tracing_subscriber::{prelude::*, util::SubscriberInitExt, EnvFilter};
