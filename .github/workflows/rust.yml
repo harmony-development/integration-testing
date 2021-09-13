@@ -44,7 +44,7 @@ jobs:
       run: cargo update --verbose
 
     - name: Run tests
-      run: RUST_LOG=info cargo run --verbose --release --package tests
+      run: RUST_LOG=info RUST_BACKTRACE=1 cargo run --verbose --release --package tests
 
     - name: Commit
       uses: stefanzweifel/git-auto-commit-action@v4
