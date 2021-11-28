@@ -657,7 +657,9 @@ where
 
             write!(&mut writer, ": ")?;
 
-            ctx.field_format().format_fields(writer, event)?;
+            ctx.field_format().format_fields(writer.by_ref(), event)?;
+
+            writeln!(&mut writer)?;
         }
 
         Ok(())
