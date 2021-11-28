@@ -40,9 +40,9 @@ const INSTANT_VIEW_URL: &str = "https://duckduckgo.com/";
 const SCHERZO_DATA: TestData = TestData {
     server: "https://chat.harmonyapp.io:2289",
     name_res: "https://chat.harmonyapp.io",
-    guild: 18418463542574935072,
-    channel: 3775933737548659938,
-    file_id: "23c782a8b622282ebc24b5664beef9500fa2a5b59131fac5b757b8e86a0e8e20",
+    guild: 14467453680900551947,
+    channel: 5539953751079296767,
+    file_id: "murxMJmXb4qPd2HBRkkpVt",
 };
 
 static mut TESTS_COMPLETE: u16 = 0;
