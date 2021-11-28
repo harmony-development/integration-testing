@@ -6,7 +6,7 @@ use harmony_rust_sdk::{
         chat::{
             EventSource, GetGuildChannelsRequest, GetGuildListRequest, InviteId, JoinGuildRequest,
         },
-        exports::hrpc::futures_util::future::try_join_all,
+        exports::hrpc::exports::futures_util::future::try_join_all,
     },
     client::{
         api::{
@@ -157,9 +157,7 @@ async fn bench_many_clients_single_guild() -> ClientResult<(Duration, Duration)>
     for (client, mut socket) in clients {
         let socket = tokio::spawn(async move {
             loop {
-                while let Some(ev) = socket.get_event().await {
-                    ev.unwrap();
-                }
+                while let Some(_ev) = socket.get_event().await.unwrap() {}
             }
         });
         let msgs = tokio::spawn(async move { send_messages(10, &client, data, true).await });

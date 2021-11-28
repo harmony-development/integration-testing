@@ -1,7 +1,7 @@
 use harmony_rust_sdk::{
     api::{
-        auth::*, batch::*, chat::*, emote::*, exports::hrpc::encode_protobuf_message,
-        exports::hrpc::tracing, mediaproxy::*, profile::*, Endpoint,
+        auth::*, batch::*, chat::*, emote::*, exports::hrpc::encode::encode_protobuf_message,
+        harmonytypes::ItemPosition, mediaproxy::*, profile::*, Endpoint,
     },
     client::{
         api::{
@@ -108,7 +108,7 @@ async fn tests(data: TestData) -> u16 {
                     async fn wait_for_socket(sock: &mut AuthSocket) {
                         let fut = async move {
                             loop {
-                                if let Some(a) = sock.get_step().await {
+                                if let Ok(Some(a)) = sock.get_step().await {
                                     tracing::info!("auth socket reply: {:?}", a);
                                     break;
                                 }
@@ -229,8 +229,8 @@ async fn tests(data: TestData) -> u16 {
                                     .into_iter()
                                     .map(|user_id| {
                                         let req = GetProfileRequest::new(user_id);
-                                        let data = encode_protobuf_message(req);
-                                        data.to_vec()
+                                        let data = encode_protobuf_message(&req);
+                                        data.freeze()
                                     })
                                     .collect();
                                 client.call(BatchSameRequest::new(
@@ -400,7 +400,7 @@ async fn tests(data: TestData) -> u16 {
                         client.call(CreateChannel::new(
                             data.guild,
                             "test".to_string(),
-                            Place::bottom(data.channel),
+                            ItemPosition::new_after(data.channel),
                         )),
                         |response| {
                             let client = client.clone();
@@ -607,7 +607,9 @@ use std::{
     time::Duration,
 };
 use tracing::{Event, Subscriber};
-use tracing_subscriber::fmt::{FmtContext, FormatEvent, FormatFields};
+use tracing_subscriber::fmt::{
+    format::Writer as TracingWriter, FmtContext, FormatEvent, FormatFields,
+};
 use tracing_subscriber::registry::LookupSpan;
 
 struct GithubActionsFormatter;
@@ -620,7 +622,7 @@ where
     fn format_event(
         &self,
         ctx: &FmtContext<'_, S, N>,
-        writer: &mut dyn fmt::Write,
+        mut writer: TracingWriter<'_>,
         event: &Event<'_>,
     ) -> fmt::Result {
         let metadata = event.metadata();
@@ -634,30 +636,28 @@ where
             let file = metadata.file();
             let line = metadata.line();
 
-            write!(writer, "::{}", lvl)?;
+            write!(&mut writer, "::{}", lvl)?;
             if let Some(file_name) = file {
-                write!(writer, " file={}", file_name)?;
+                write!(&mut writer, " file={}", file_name)?;
             }
             if let Some(line) = line {
                 if file.is_some() {
-                    write!(writer, ",line={}", line)?;
+                    write!(&mut writer, ",line={}", line)?;
                 } else {
-                    write!(writer, " line={}", line)?;
+                    write!(&mut writer, " line={}", line)?;
                 }
             }
-            write!(writer, "::")?;
+            write!(&mut writer, "::")?;
 
             // Write spans and fields of each span
             ctx.visit_spans(|span| match span.name() {
                 "client connection" | "client auth" => Ok(()),
-                _ => write!(writer, "/{}", span.name().replace(' ', "_")),
+                _ => write!(&mut writer, "/{}", span.name().replace(' ', "_")),
             })?;
 
-            write!(writer, ": ")?;
+            write!(&mut writer, ": ")?;
 
             ctx.field_format().format_fields(writer, event)?;
-
-            writeln!(writer)?;
         }
 
         Ok(())
