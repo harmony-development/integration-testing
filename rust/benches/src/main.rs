@@ -6,7 +6,7 @@ use harmony_rust_sdk::{
         chat::{
             EventSource, GetGuildChannelsRequest, GetGuildListRequest, InviteId, JoinGuildRequest,
         },
-        exports::hrpc::exports::futures_util::future::try_join_all,
+        exports::hrpc::exports::futures_util::{future::try_join_all, TryFutureExt},
     },
     client::{
         api::{
@@ -160,7 +160,7 @@ async fn bench_many_clients_single_guild() -> ClientResult<(Duration, Duration)>
                 while let Some(_ev) = socket.get_event().await.unwrap() {}
             }
         });
-        let msgs = tokio::spawn(async move { send_messages(10, &client, data, true).await });
+        let msgs = tokio::spawn(send_messages(10, client, data, true));
         handles.push(async move {
             tokio::select! {
                 _ = socket => { panic!(); },
@@ -191,11 +191,9 @@ async fn bench_many_clients() -> ClientResult<Duration> {
     }
     let mut handles = Vec::with_capacity(1000);
     for (client, data) in clients {
-        handles.push(tokio::spawn(async move {
-            send_messages(1000, &client, data, false)
-                .await
-                .map(|res| res.0)
-        }));
+        handles.push(tokio::spawn(
+            send_messages(1000, client, data, false).map_ok(|res| res.0),
+        ));
     }
     let run: Duration = try_join_all(handles)
         .await
@@ -210,9 +208,9 @@ async fn bench_send_msgs(email: impl AsRef<str>) -> Result<ClientResult<[Duratio
     let (client, data) = new_test_client(email.as_ref()).await.unwrap();
 
     tokio::spawn(async move {
-        let sent_10_msg = send_messages(10, &client, data, false).await?.0;
-        let sent_100_msg = send_messages(100, &client, data, false).await?.0;
-        let sent_1000_msg = send_messages(1000, &client, data, false).await?.0;
+        let sent_10_msg = send_messages(10, client.clone(), data, false).await?.0;
+        let sent_100_msg = send_messages(100, client.clone(), data, false).await?.0;
+        let sent_1000_msg = send_messages(1000, client, data, false).await?.0;
         Ok([sent_10_msg, sent_100_msg, sent_1000_msg])
     })
     .await
@@ -220,7 +218,7 @@ async fn bench_send_msgs(email: impl AsRef<str>) -> Result<ClientResult<[Duratio
 
 async fn send_messages(
     num: usize,
-    client: &Client,
+    client: Client,
     data: BenchData,
     simulate_wait: bool,
 ) -> ClientResult<(Duration, Duration)> {

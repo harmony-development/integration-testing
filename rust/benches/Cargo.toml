@@ -5,7 +5,7 @@ edition = "2018"
 
 [dependencies]
 tokio = { version = "1.8", features = ["macros", "time", "rt-multi-thread"] }
-harmony_rust_sdk = { git = "https://github.com/harmony-development/harmony_rust_sdk.git", branch = "master", features = ["client"] }
+harmony_rust_sdk = { git = "https://github.com/harmony-development/harmony_rust_sdk.git", branch = "master", features = ["client_native"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing = "0.1"
 rand = { version = "0.8", features = ["small_rng"] }

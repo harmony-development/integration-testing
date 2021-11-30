@@ -6,7 +6,7 @@ authors = ["Yusuf Bera Ertan <y.bera003.06@protonmail.com>"]
 edition = "2018"
 
 [dependencies]
-harmony_rust_sdk = { git = "https://github.com/harmony-development/harmony_rust_sdk.git", branch = "master", features = ["client"] }
+harmony_rust_sdk = { git = "https://github.com/harmony-development/harmony_rust_sdk.git", branch = "master", features = ["client_native"] }
 rand = "0.8"
 tokio = { version = "1.8", features = ["macros", "time", "rt-multi-thread"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
