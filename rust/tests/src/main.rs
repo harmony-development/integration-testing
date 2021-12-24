@@ -1,7 +1,7 @@
 use harmony_rust_sdk::{
     api::{
         auth::*, batch::*, chat::*, emote::*, exports::hrpc::encode::encode_protobuf_message,
-        harmonytypes::ItemPosition, mediaproxy::*, profile::*, Endpoint,
+        mediaproxy::*, profile::*, Endpoint,
     },
     client::{
         api::{
@@ -397,11 +397,7 @@ async fn tests(data: TestData) -> u16 {
 
                     test(
                         "create channel",
-                        client.call(CreateChannel::new(
-                            data.guild,
-                            "test".to_string(),
-                            ItemPosition::new_after(data.channel),
-                        )),
+                        client.call(CreateChannel::new(data.guild, "test".to_string())),
                         |response| {
                             let client = client.clone();
                             async move {
