@@ -355,9 +355,9 @@ dependencies = [
 
 [[package]]
 name = "hrpc"
-version = "0.33.21"
+version = "0.33.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f0f77d67451a037fb5587340d7956d8673935f57d1d890e88d5c22823cad797"
+checksum = "7808b92a1a40d44ed5ea66d2fca9dbabe5d9a694d95c5ca49b05b87886345135"
 dependencies = [
  "bytes",
  "futures-util",
@@ -1039,9 +1039,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.76"
+version = "1.0.77"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edde269018d33d7146dd074e5f7da6fef9b0a957507454c867caa0852c560a9a"
+checksum = "651bca88044a8a5166bd0fd984a7ca558301079cf08365ca6287b2bb608cca3e"
 dependencies = [
  "itoa 1.0.1",
  "ryu",
